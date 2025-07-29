@@ -433,7 +433,7 @@ static NSInteger _currentWindows = 0;
         }
     } else if ([name isEqualToString:UIContentSizeCategoryDidChangeNotification]) {
         NSString *contentSizeCategory = notification.userInfo[UIContentSizeCategoryNewValueKey];
-        [self applyCssForContentSizeCategory:contentSizeCategory];
+        [LEANUtilities applyFontScalingForContentSize:contentSizeCategory toWebView:self.wkWebview asUserScript:NO];
     }
 }
 
@@ -2111,10 +2111,6 @@ static NSInteger _currentWindows = 0;
         NSString *mode = [[NSUserDefaults standardUserDefaults] objectForKey:@"darkMode"];
         [self setCssTheme:mode ?: appConfig.iosDarkMode andPersistData:NO];
         
-        // Accessibility & Dynamic Type Support
-        UIContentSizeCategory contentSizeCategory = [UIApplication sharedApplication].preferredContentSizeCategory;
-        [self applyCssForContentSizeCategory:contentSizeCategory];
-        
         [self runJavascriptWithCallback:@[@"median_library_ready", @"gonative_library_ready"] data:nil];
     });
 }
@@ -2822,38 +2818,6 @@ static NSInteger _currentWindows = 0;
         // persist statusbar and body bg color matching status
         [[NSUserDefaults standardUserDefaults] setBool:enableMatching forKey:@"matchStatusBarToBodyBgColor"];
         [[NSUserDefaults standardUserDefaults] synchronize];
-    }
-}
-
-- (void)applyCssForContentSizeCategory:(NSString *)contentSizeCategory {
-    if (![GoNativeAppConfig sharedAppConfig].dynamicTypeEnabled) {
-        return;
-    }
-    
-    NSDictionary *fontScale = @{
-        UIContentSizeCategoryExtraSmall: @90,
-        UIContentSizeCategorySmall: @95,
-        UIContentSizeCategoryMedium: @100,
-        UIContentSizeCategoryLarge: @108,
-        UIContentSizeCategoryExtraLarge: @116,
-        UIContentSizeCategoryExtraExtraLarge: @124,
-        UIContentSizeCategoryExtraExtraExtraLarge: @132,
-        UIContentSizeCategoryAccessibilityMedium: @170,
-        UIContentSizeCategoryAccessibilityLarge: @190,
-        UIContentSizeCategoryAccessibilityExtraLarge: @210,
-        UIContentSizeCategoryAccessibilityExtraExtraLarge: @230,
-        UIContentSizeCategoryAccessibilityExtraExtraExtraLarge: @250,
-    };
-    
-    if (fontScale[contentSizeCategory]) {
-        NSString *createStyleJs = @" "
-        "   var style = document.createElement('style'); "
-        "   style.innerHTML = 'body { -webkit-text-size-adjust: %@%%; }'; "
-        "   document.head.appendChild(style); "
-        " ";
-        
-        NSString *javascript = [NSString stringWithFormat:createStyleJs, fontScale[contentSizeCategory]];
-        [self.wkWebview evaluateJavaScript:javascript completionHandler:nil];
     }
 }
 

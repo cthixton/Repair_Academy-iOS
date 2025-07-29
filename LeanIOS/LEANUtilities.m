@@ -547,6 +547,10 @@
         
         [self configureViewportOfWebView:webview];
         
+        // Accessibility & Dynamic Type Support
+        UIContentSizeCategory contentSizeCategory = [UIApplication sharedApplication].preferredContentSizeCategory;
+        [self applyFontScalingForContentSize:contentSizeCategory toWebView:webview asUserScript:YES];
+        
         [((LEANAppDelegate *)[UIApplication sharedApplication].delegate).bridge loadUserScriptsForContentController:webview.configuration.userContentController];
         
         // for our faux content-inset
@@ -592,6 +596,45 @@
 
     WKUserScript *userScript = [[WKUserScript alloc] initWithSource:scriptSource injectionTime:WKUserScriptInjectionTimeAtDocumentEnd forMainFrameOnly:YES];
     [webview.configuration.userContentController addUserScript:userScript];
+}
+
++ (void)applyFontScalingForContentSize:(NSString *)contentSizeCategory toWebView:(WKWebView *)webView asUserScript:(BOOL)asUserScript {
+    if (![GoNativeAppConfig sharedAppConfig].dynamicTypeEnabled) {
+        return;
+    }
+    
+    NSDictionary *fontScale = @{
+        UIContentSizeCategoryExtraSmall: @90,
+        UIContentSizeCategorySmall: @95,
+        UIContentSizeCategoryMedium: @100,
+        UIContentSizeCategoryLarge: @108,
+        UIContentSizeCategoryExtraLarge: @116,
+        UIContentSizeCategoryExtraExtraLarge: @124,
+        UIContentSizeCategoryExtraExtraExtraLarge: @132,
+        UIContentSizeCategoryAccessibilityMedium: @170,
+        UIContentSizeCategoryAccessibilityLarge: @190,
+        UIContentSizeCategoryAccessibilityExtraLarge: @210,
+        UIContentSizeCategoryAccessibilityExtraExtraLarge: @230,
+        UIContentSizeCategoryAccessibilityExtraExtraExtraLarge: @250,
+    };
+    
+    if (!fontScale[contentSizeCategory]) {
+        return;
+    }
+    
+    NSString *createStyleJs = @" "
+    "   var style = document.createElement('style'); "
+    "   style.innerHTML = 'body { -webkit-text-size-adjust: %@%%; }'; "
+    "   document.head.appendChild(style); "
+    " ";
+    NSString *js = [NSString stringWithFormat:createStyleJs, fontScale[contentSizeCategory]];
+    
+    if (asUserScript) {
+        WKUserScript *userScript = [[WKUserScript alloc] initWithSource:js injectionTime:WKUserScriptInjectionTimeAtDocumentEnd forMainFrameOnly:YES];
+        [webView.configuration.userContentController addUserScript:userScript];
+    } else {
+        [webView evaluateJavaScript:js completionHandler:nil];
+    }
 }
 
 +(void)removeDoubleTapFromView:(UIView *)view {
